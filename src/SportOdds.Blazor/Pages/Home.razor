@@ -1,0 +1,99 @@
+﻿@page "/"
+@page "/{league}"
+@using SportOdds.Blazor.Model
+@using SportOdds.Blazor.Scrapers
+
+@inject PinnacleScraper pinnacleScraper
+
+@if (isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+
+<MudDataGrid @ref="gridRef" T="Game" MultiSelection="true" Items="@Games" SortMode="SortMode.Multiple" Filterable="true" QuickFilter="@_quickFilter"
+    Hideable="true" Groupable="true" GroupExpanded="true" RowsPerPage="@rowsPerPage">
+    <ToolBarContent>
+        <div>
+            <MudText Typo="Typo.h6">Upcoming @League.ToUpper() Games</MudText>
+        </div>
+        <MudSpacer />
+        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" Immediate="true"
+                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="@RefreshDataAsync"></MudIconButton>
+    </ToolBarContent>
+    <Columns>
+        <PropertyColumn Property="x => x.GameDateOnly" Title="Date" Grouping GroupBy="@(x => x.GameDateOnly)">
+            <GroupTemplate>
+                @(((DateOnly)context.Grouping.Key).ToString("dddd, MMMM d"))
+            </GroupTemplate>
+            <CellTemplate>
+                @context.Item.GameDateTime.ToString("t")
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.HomeTeam" Title="Home" CellClassFunc="@((x) => x.FavoriteTeam == x.HomeTeam ? "mud-theme-primary" : "")">
+        
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.AwayTeam" Title="Away" CellClassFunc="@((x) => x.FavoriteTeam == x.AwayTeam ? "mud-theme-primary" : "")"/>
+        <PropertyColumn Property="x => x.Spread">
+            <CellTemplate>
+                @(context.Item.Spread?.ToString() ?? "N/A")
+            </CellTemplate>
+        </PropertyColumn>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="Game" 
+            PageSizeOptions="[5, 10, 25, 100, int.MaxValue]" 
+            AllItemsText="All" 
+            />
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    List<Game> Games = new List<Game>();
+    MudDataGrid<Game> gridRef;
+    private string _searchString = string.Empty;
+    private bool isLoading = false;
+    private int rowsPerPage = int.MaxValue;
+
+    [Parameter]
+    public string League { get; set; } = "CFB";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await RefreshDataAsync();
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        if (string.IsNullOrWhiteSpace(League))
+            League = "CFB";
+
+        Games = await pinnacleScraper.GetGamesAsync(League);
+
+        isLoading = false;
+    }
+
+    // quick filter - filter globally across multiple columns with the same input
+    private Func<Game, bool> _quickFilter => x =>
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+
+        if (x.HomeTeam.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (x.AwayTeam.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+    };
+}

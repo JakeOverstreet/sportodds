@@ -1,0 +1,69 @@
+﻿@inherits LayoutComponentBase
+
+<MudThemeProvider @bind-IsDarkMode="@_isDarkMode" Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Class="">
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+        </MudHidden>
+        <MudText Typo="Typo.h6">Sport Odds</MudText>
+        <MudSpacer/>
+        <MudSwitch @bind-Value="_isDarkMode"
+                    Color="@(_isDarkMode ? Color.Primary : Color.Dark)"
+                    Style="float: right; margin: 0 !important"
+                    T="bool"
+                    ThumbIcon="@(_isDarkMode ? @Icons.Material.Filled.LightMode : @Icons.Material.Filled.DarkMode)" />
+    </MudAppBar>
+    <MudHidden Breakpoint="Breakpoint.MdAndUp">
+        <MudDrawer @bind-Open="@_drawerOpen">
+            <NavMenu />
+        </MudDrawer>
+    </MudHidden>
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pt-4">
+            
+            @*Show content with menu for desktop/tablet*@
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <div class="d-flex flex-grow-1 gap-4">
+                    <MudPaper Elevation="0">
+                        <NavMenu />
+                    </MudPaper>
+                    <div class="flex-grow-1">
+                        @Body
+                    </div>
+                </div>
+            </MudHidden>
+
+            @*Show basic content for mobile*@
+            <MudHidden Breakpoint="Breakpoint.MdAndUp">
+                @Body
+            </MudHidden>
+              
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+@code {
+    private bool _isDarkMode = true;
+    bool _drawerOpen = true;
+
+
+    private MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Background = Colors.Gray.Lighten4,
+        }
+    };
+
+
+
+
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+}
