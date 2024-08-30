@@ -27,6 +27,7 @@
                 @(((DateOnly)context.Grouping.Key).ToString("dddd, MMMM d"))
             </GroupTemplate>
             <CellTemplate>
+                @context.Item.GameDateTime.ToString("dddd, MMMM d")
                 @context.Item.GameDateTime.ToString("t")
             </CellTemplate>
         </PropertyColumn>

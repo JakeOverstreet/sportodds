@@ -79,13 +79,15 @@ public class PinnacleScraper : HttpClient
                     }
                 }
 
+                var localDateTime = new DateTime(matchup.StartTime.Value.Ticks, DateTimeKind.Utc).ToLocalTime();
+
                 var game = new Game()
                 {
                     HomeTeam = home.Name,
                     AwayTeam = away.Name,
                     FavoriteTeam = favorite,
                     Spread = spread,
-                    GameDateTime = matchup.StartTime.Value,
+                    GameDateTime = localDateTime,
                 };
 
                 results.Add(game);
