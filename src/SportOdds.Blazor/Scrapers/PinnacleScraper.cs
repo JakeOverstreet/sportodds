@@ -14,45 +14,51 @@ public class PinnacleScraper : HttpClient
     public async Task<List<Game>> GetGamesAsync(string league)
     {
         List<Game> results = [];
-        try
+        var leagueId = PinnacleOptions.GetLeagueValue(league); 
+
+        var marketString = await GetStringAsync($"https://guest.api.arcadia.pinnacle.com/0.1/leagues/{leagueId}/markets/straight");
+        var matchupString = await GetStringAsync($"https://guest.api.arcadia.pinnacle.com/0.1/leagues/{leagueId}/matchups");
+
+        var marketResponse = JsonSerializer.Deserialize<MarketResponse[]>(marketString);
+        var matchupResponse = JsonSerializer.Deserialize<MatchupResponse[]>(matchupString);
+
+        if (matchupResponse is null || marketResponse is null)
         {
-            var leagueId = PinnacleOptions.GetLeagueValue(league); 
+            return results;
+        }
 
-            var marketString = await GetStringAsync($"https://guest.api.arcadia.pinnacle.com/0.1/leagues/{leagueId}/markets/straight");
-            var matchupString = await GetStringAsync($"https://guest.api.arcadia.pinnacle.com/0.1/leagues/{leagueId}/matchups");
-
-            var marketResponse = JsonSerializer.Deserialize<MarketResponse[]>(marketString);
-            var matchupResponse = JsonSerializer.Deserialize<MatchupResponse[]>(matchupString);
-
-            if (matchupResponse is null || marketResponse is null)
+        //Build game objects
+        var matchups = matchupResponse.Where(x => x.Type?.ToLower() == "matchup");
+        foreach (var matchup in matchups)
+        {
+            try
             {
-                return results;
-            }
+                if (matchup is null || matchup.StartTime is null)
+                    continue;
 
-            //Build game objects
-            var matchups = matchupResponse.Where(x => x.Type.ToLower() == "matchup");
-            foreach (var matchup in matchups)
-            {
-                var home = matchup.Participants.FirstOrDefault(x => x.Alignment.ToLower() == "home");
-                var away = matchup.Participants.FirstOrDefault(x => x.Alignment.ToLower() == "away");
+                var home = matchup.Participants.FirstOrDefault(x => x.Alignment?.ToLower() == "home");
+                var away = matchup.Participants.FirstOrDefault(x => x.Alignment?.ToLower() == "away");
 
-                if (home is null || away is null)
+                if (home is null || 
+                    away is null || 
+                    home.Name is null || 
+                    away.Name is null)
                     continue;
 
                 var spreadMarkets = marketResponse.Where(x => x.MatchupId == matchup.Id)
-                    .Where(x => x.Type.ToLower() == "spread");
+                    .Where(x => x.Type?.ToLower() == "spread");
 
 
                 //To get the proper spread, we need to find the spread market with period of 0 and type spread
                 decimal? spread = null;
                 string favorite = "N/A";
 
-                var wholeGameSpread = spreadMarkets.FirstOrDefault(x => x.Period == 0 && x.Type.ToLower() == "spread");
+                var wholeGameSpread = spreadMarkets.FirstOrDefault(x => x.Period == 0 && x.Type?.ToLower() == "spread");
 
                 if (wholeGameSpread is not null)
                 {
-                    var awayPoints = wholeGameSpread.Prices.FirstOrDefault(x => x.Designation.ToLower() == "away")?.Points;
-                    var homePoints = wholeGameSpread.Prices.FirstOrDefault(x => x.Designation.ToLower() == "home")?.Points;
+                    var awayPoints = wholeGameSpread.Prices.FirstOrDefault(x => x.Designation?.ToLower() == "away")?.Points;
+                    var homePoints = wholeGameSpread.Prices.FirstOrDefault(x => x.Designation?.ToLower() == "home")?.Points;
 
                     if (awayPoints is not null && homePoints is not null)
                     {
@@ -79,18 +85,18 @@ public class PinnacleScraper : HttpClient
                     AwayTeam = away.Name,
                     FavoriteTeam = favorite,
                     Spread = spread,
-                    GameDateTime = matchup.StartTime,
+                    GameDateTime = matchup.StartTime.Value,
                 };
 
                 results.Add(game);
             }
+            catch 
+            { 
+                //Do nothing, any results are better than no results
+            }
+        }
 
-            results = results.OrderBy(x => x.GameDateTime).ToList();
-        }
-        catch
-        {
-            //Do nothing
-        }
+        results = [.. results.OrderBy(x => x.GameDateTime)];
         return results;
     }
 }
