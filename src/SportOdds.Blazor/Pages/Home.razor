@@ -4,6 +4,7 @@
 @using SportOdds.Blazor.Scrapers
 
 @inject PinnacleScraper pinnacleScraper
+@inject ISnackbar snackbar
 
 @if (isLoading)
 {
@@ -72,15 +73,27 @@
 
     private async Task RefreshDataAsync()
     {
-        isLoading = true;
-        StateHasChanged();
+        try {
+            isLoading = true;
+            StateHasChanged();
 
-        if (string.IsNullOrWhiteSpace(League))
-            League = "CFB";
+            if (string.IsNullOrWhiteSpace(League))
+                League = "CFB";
 
-        Games = await pinnacleScraper.GetGamesAsync(League);
+            Games = await pinnacleScraper.GetGamesAsync(League);
 
-        isLoading = false;
+            snackbar.Add($"Loaded {Games.Count} games", Severity.Info);
+
+            isLoading = false;
+        }
+        catch
+        {
+            snackbar.Add("Error loading data", Severity.Error);   
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     // quick filter - filter globally across multiple columns with the same input
