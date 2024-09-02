@@ -1,4 +1,5 @@
 ﻿using SportOdds.Blazor.Model;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace SportOdds.Blazor.Scrapers;
@@ -28,7 +29,7 @@ public class PinnacleScraper : HttpClient
         }
 
         //Build game objects
-        var matchups = matchupResponse.Where(x => x.Type?.ToLower() == "matchup");
+        var matchups = matchupResponse.Where(x => x.Type?.ToLower() == "matchup").OrderBy(x => x.Version);
         foreach (var matchup in matchups)
         {
             try
@@ -46,7 +47,7 @@ public class PinnacleScraper : HttpClient
                     continue;
 
                 var spreadMarkets = marketResponse.Where(x => x.MatchupId == matchup.Id)
-                    .Where(x => x.Type?.ToLower() == "spread");
+                    .Where(x => x.Type?.ToLower() == "spread").OrderBy(x => x.Version);
 
 
                 //To get the proper spread, we need to find the spread market with period of 0 and type spread
@@ -90,7 +91,14 @@ public class PinnacleScraper : HttpClient
                     GameDateTime = localDateTime,
                 };
 
-                results.Add(game);
+                //Prevent duplicates
+                if (!results.Any(x => x.HomeTeam == game.HomeTeam 
+                                            && x.AwayTeam == game.AwayTeam
+                                            && x.GameDateTime == game.GameDateTime))
+                {
+                    results.Add(game);
+                }
+                
             }
             catch 
             { 
