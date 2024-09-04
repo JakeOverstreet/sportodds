@@ -7,6 +7,9 @@ public class MarketResponse
     [JsonPropertyName("cutoffAt")]
     public DateTime? CutoffAt { get; set; }
 
+    [JsonPropertyName("isAlternate")]
+    public bool? IsAlternate { get; set; }
+
     [JsonPropertyName("key")]
     public string? Key { get; set; }
 
@@ -21,6 +24,9 @@ public class MarketResponse
 
     [JsonPropertyName("prices")]
     public List<PriceResponse> Prices { get; set; } = [];
+
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
 
     [JsonPropertyName("type")]
     public string? Type { get; set; }

@@ -29,7 +29,7 @@ public class PinnacleScraper : HttpClient
         }
 
         //Build game objects
-        var matchups = matchupResponse.Where(x => x.Type?.ToLower() == "matchup").OrderBy(x => x.Version);
+        var matchups = matchupResponse.Where(x => x.Type?.ToLower() == "matchup");
         foreach (var matchup in matchups)
         {
             try
@@ -46,15 +46,18 @@ public class PinnacleScraper : HttpClient
                     away.Name is null)
                     continue;
 
-                var spreadMarkets = marketResponse.Where(x => x.MatchupId == matchup.Id)
-                    .Where(x => x.Type?.ToLower() == "spread").OrderBy(x => x.Version);
+                var spreadMarkets = marketResponse.Where(x => x.MatchupId == matchup.Id 
+                        && x.Period == 0
+                        && x.Type?.ToLower() == "spread" 
+                        && x.IsAlternate == false
+                        && x.Status?.ToLower() == "open").ToList();
 
 
                 //To get the proper spread, we need to find the spread market with period of 0 and type spread
                 decimal? spread = null;
                 string favorite = "N/A";
 
-                var wholeGameSpread = spreadMarkets.FirstOrDefault(x => x.Period == 0 && x.Type?.ToLower() == "spread");
+                var wholeGameSpread = spreadMarkets.FirstOrDefault();
 
                 if (wholeGameSpread is not null)
                 {
@@ -92,13 +95,23 @@ public class PinnacleScraper : HttpClient
                 };
 
                 //Prevent duplicates
-                if (!results.Any(x => x.HomeTeam == game.HomeTeam 
-                                            && x.AwayTeam == game.AwayTeam
-                                            && x.GameDateTime == game.GameDateTime))
+                var duplicateGame = results.FirstOrDefault(x => x.HomeTeam == game.HomeTeam 
+                    && x.AwayTeam == game.AwayTeam
+                    && x.GameDateTime == game.GameDateTime);
+
+                if (duplicateGame is not null 
+                    && duplicateGame.Spread is null
+                    && spread is not null)
                 {
-                    results.Add(game);
+                    //Update spread
+                    duplicateGame.Spread = spread;
+                    duplicateGame.FavoriteTeam = favorite;
                 }
-                
+                else if (duplicateGame is null)
+                {
+                   //Add new game
+                   results.Add(game);
+                }
             }
             catch 
             { 
